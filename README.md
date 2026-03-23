@@ -1,1 +1,1 @@
-# pose-insight
+# PoseInsight
