@@ -78,14 +78,14 @@ def process_video(input_path, output_path):
     
     return True
 
-def run_webcam():
+def run_webcam(frame_placeholder, stop_flag):
     cap = cv2.VideoCapture(0)
 
     if not cap.isOpened():
         print("Error: Could not open webcam")
         return
-
-    while True:
+    
+    while cap.isOpened():
         ret, frame = cap.read()
         if not ret:
             break
@@ -93,9 +93,24 @@ def run_webcam():
         results = pose.process(frame)
         frame = draw_pose(frame, results)
 
-        cv2.imshow("Pose Insight", frame)
+        # convert BGR to RGB for Streamlit
+        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        frame_placeholder.image(frame_rgb, channels= "RGB")
 
-        if cv2.waitKey(1) & 0xFF == 27:
+        if stop_flag():
             break
     cap.release()
-    cv2.destroyAllWindows()
+    # while True:
+    #     ret, frame = cap.read()
+    #     if not ret:
+    #         break
+            
+    #     results = pose.process(frame)
+    #     frame = draw_pose(frame, results)
+
+    #     cv2.imshow("Pose Insight", frame)
+
+    #     if cv2.waitKey(1) & 0xFF == 27:
+    #         break
+    # cap.release()
+    # cv2.destroyAllWindows()
