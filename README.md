@@ -13,14 +13,24 @@ To run the interactive prototype:
 
 
 ##  Project Structure
-The repository is organized to support a modular AI pipeline:
+```
+PoseInsight/
+├── app.py                # Main Streamlit entry point & UI logic
+├── requirements.txt      # Python dependencies (MediaPipe, OpenCV, etc.)
+├── core/
+│   ├── pose_estimator.py # MediaPipe landmark extraction engine
+│   └── analysis.py       # Exercise classifier & LSTM form analysis
+├── data/
+│   └── pushup1.mp4       # Sample input for testing
+├── project_docs/
+│   ├── PoseInsight.pdf   # IEEE Preliminary Report
+│   └── Arch_Diagram.png  # System architecture overview
+├── utils/
+│   ├── draw.py           # Skeleton overlay and biomechanical labeling
+│   └── io_video.py       # Video reading, writing, and frame handling
+└── outputs/              # Processed results with pose annotations
 
-- ```app.py```: The main entry point for the Streamlit user interface.
-- ```core/```: Core logic including ```pose_estimator.py``` (MediaPipe integration and landmark extraction).
-- ```utils/```: Helper scripts for video I/O (```io_video.py```) and skeleton visualization (```draw.py```).
-- ```data/```: Sample videos and datasets for testing and validation.
-- ```project_docs/```: Technical reports, IEEE preliminary documents, and architecture diagrams.
-- ```outputs/```: Processed videos with annotated pose overlays and metrics.
+```
 
 
 ## Features & Technology
