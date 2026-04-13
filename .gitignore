@@ -2,4 +2,7 @@ venv/
 __pycache__/
 .DS_Store
 .env
+
 # Ignore dataset
+data/
+outputs/
