@@ -1,10 +1,14 @@
 import cv2
 from core.pose_estimator import PoseEstimator
+from core.feature_extractor import FeatureExtractor
+from core.classifier import ExerciseClassifier
 from utils.draw import draw_pose
 import os
 import subprocess
 
 pose = PoseEstimator()
+feature_extractor = FeatureExtractor()
+classifier = ExerciseClassifier()
 
 def process_video(input_path, output_path):
     cap = cv2.VideoCapture(input_path)
@@ -47,7 +51,19 @@ def process_video(input_path, output_path):
             break
 
         results = pose.process(frame)
+        features = feature_extractor.process(results)  
+        if features is not None:
+            clean_features = {k: round(float(v), 2) for k, v in features.items()}
+            label = classifier.update(clean_features)
+            # print("features", clean_features)
+            print("label", label)
+        else:
+            label = "unknown"
         frame = draw_pose(frame, results)
+        
+        cv2.putText(frame, f"Exercise: {label}", (30, 50),
+            cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2,
+            cv2.LINE_AA)
 
         out.write(frame)
         frame_count += 1
@@ -91,26 +107,24 @@ def run_webcam(frame_placeholder, stop_flag):
             break
             
         results = pose.process(frame)
+        features = feature_extractor.process(results)  
+        if features is not None:
+            clean_features = {k: round(float(v), 2) for k, v in features.items()}
+            label = classifier.update(clean_features)
+            # print("features", clean_features)
+            print("label", label)
+        else:
+            label = "unknown"
         frame = draw_pose(frame, results)
 
         # convert BGR to RGB for Streamlit
         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         frame_placeholder.image(frame_rgb, channels= "RGB")
 
+        cv2.putText(frame, f"Exercise: {label}", (30, 50),
+            cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2,
+            cv2.LINE_AA)
+
         if stop_flag():
             break
     cap.release()
-    # while True:
-    #     ret, frame = cap.read()
-    #     if not ret:
-    #         break
-            
-    #     results = pose.process(frame)
-    #     frame = draw_pose(frame, results)
-
-    #     cv2.imshow("Pose Insight", frame)
-
-    #     if cv2.waitKey(1) & 0xFF == 27:
-    #         break
-    # cap.release()
-    # cv2.destroyAllWindows()
