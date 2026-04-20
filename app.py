@@ -49,16 +49,30 @@ elif option == options[1]:
     if "run_camera" not in st.session_state:
         st.session_state.run_camera = False
     
+    # col1, col2 = st.columns(2)
+
+    # with col1:
+    #     if st.button("Start Camera"):
+    #         st.session_state.run_camera = True
+        
+    # with col2:
+    #     if st.button("Stop Camera"):
+    #         st.session_state.run_camera = False
+    
+    # frame_placeholder = st.empty()
+
+    # if st.session_state.run_camera:
+    #     run_webcam(frame_placeholder, lambda: not st.session_state.run_camera)
     col1, col2 = st.columns(2)
 
     with col1:
         if st.button("Start Camera"):
             st.session_state.run_camera = True
-        
+
     with col2:
         if st.button("Stop Camera"):
             st.session_state.run_camera = False
-    
+
     frame_placeholder = st.empty()
 
     if st.session_state.run_camera:
