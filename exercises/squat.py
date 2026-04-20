@@ -1,21 +1,24 @@
 class SquatCounter:
-    def __init__(self, up_threshold=160, down_threshold=100):
-        self.up_threshold = up_threshold
-        self.down_threshold = down_threshold
-        self.state = "UP"
-        self.reps = 0
+    def __init__(self):
+        self.reps  = 0
+        self.phase = "up"
 
-    def update(self, features):
-        if features is None:
-            return self.reps, self.state
-        
-        avg_knee = (features["left_knee"]) + (features["right_knee"]) / 2
+        self.DOWN_FRAC = 0.55
+        self.UP_FRAC   = 0.80
 
-        if self.state == "UP" and avg_knee < self.down_threshold:
-            self.state = "DOWN"
+    def update(self, knees: list[float]) -> None:
+        lo, hi = min(knees), max(knees)
+        if hi - lo < 5:
+            return
 
-        elif self.state == "DOWN" and avg_knee > self.up_threshold:
-            self.state = "UP"
+        norm = (knees[-1] - lo) / (hi - lo)
+
+        if self.phase == "up" and norm < self.DOWN_FRAC:
+            self.phase = "down"
+        elif self.phase == "down" and norm > self.UP_FRAC:
+            self.phase = "up"
             self.reps += 1
-        
-        return self.reps, self.state
+
+    def reset(self):
+        self.reps  = 0
+        self.phase = "up"

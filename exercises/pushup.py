@@ -1,21 +1,24 @@
 class PushUpCounter:
-    def __init__(self, up_threshold=160, down_threshold=90):
-        self.up_threshold = up_threshold
-        self.down_threshold = down_threshold
-        self.state = "UP"
-        self.reps = 0
+    def __init__(self):
+        self.reps  = 0
+        self.phase = "up"
 
-    def update(self, features):
-        if features is None:
-            return self.reps, self.state
+        self.DOWN_FRAC = 0.45
+        self.UP_FRAC   = 0.75
 
-        avg_elbow = (features["left_elbow"] + features["right_elbow"]) / 2
+    def update(self, elbows: list[float]) -> None:
+        lo, hi = min(elbows), max(elbows)
+        if hi - lo < 5:
+            return
 
-        if self.state == "UP" and avg_elbow < self.down_threshold:
-            self.state = "DOWN"
+        norm = (elbows[-1] - lo) / (hi - lo)
 
-        elif self.state == "DOWN" and avg_elbow > self.up_threshold:
-            self.state = "UP"
+        if self.phase == "up" and norm < self.DOWN_FRAC:
+            self.phase = "down"
+        elif self.phase == "down" and norm > self.UP_FRAC:
+            self.phase = "up"
             self.reps += 1
 
-        return self.reps, self.state
+    def reset(self):
+        self.reps  = 0
+        self.phase = "up"
