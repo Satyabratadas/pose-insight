@@ -1,7 +1,7 @@
 import os
 import subprocess
 from collections import Counter
-
+from core.risk_detection import detect_risks
 import cv2
 
 from core.pose_estimator import PoseEstimator
@@ -150,19 +150,105 @@ def run_webcam(frame_placeholder, stop_flag):
     cap.release()
 
 
-def analyze_frame(
-    frame,
-    pose,
-    feature_extractor,
-    classifier,
-    quality_predictor,
-    session=None,
-):
+def analyze_frame(frame, pose, feature_extractor,
+    classifier, quality_predictor, session=None):
+
+    # results = pose.process(frame)
+    # features = feature_extractor.process(results)
+
+    # label, rep_counts, last_score = classifier.update(features)
+    # quality = quality_predictor.update(features)
+    # risk_flags = detect_risks(features, quality)
+
+    # frame = draw_pose(frame, results)
+
+    # avg_knee = 0.0
+    # avg_elbow = 0.0
+    # trunk = 0.0
+
+    # if features is not None:
+    #     avg_knee = (features.get("left_knee", 0.0) + features.get("right_knee", 0.0)) / 2
+
+    #     left_elbow = features.get("left_elbow") or 0.0
+    #     right_elbow = features.get("right_elbow") or 0.0
+    #     avg_elbow = (left_elbow + right_elbow) / 2
+
+    #     trunk = features.get("trunk") or 0.0
+
+    # if quality and "Squat" in quality:
+    #     display_exercise = "squat"
+    #     display_reps = rep_counts.get("squat", 0)
+    # elif quality and "Push-up" in quality:
+    #     display_exercise = "push_up"
+    #     display_reps = rep_counts.get("push_up", 0)
+    # else:
+    #     display_exercise = label or "idle"
+    #     display_reps = 0
+
+    # if session is not None:
+    #     session["exercise"] = display_exercise
+    #     session["total_reps"] = display_reps
+    #     session["last_display_reps"] = display_reps
+
+    #     session["squat_reps"] = rep_counts.get("squat", 0)
+    #     session["pushup_reps"] = rep_counts.get("push_up", 0)
+
+    #     # Store highest rep count seen across the full video
+    #     session["max_reps"] = max(
+    #         session.get("max_reps", 0),
+    #         display_reps,
+    #         session["squat_reps"],
+    #         session["pushup_reps"]
+    #     )
+
+    #     session["total_reps"] = session["max_reps"]
+
+    #     if features is not None:
+    #         session["avg_knees"].append(avg_knee)
+    #         session["avg_elbows"].append(avg_elbow)
+    #         session["avg_trunks"].append(trunk)
+
+    #     if quality not in ["Collecting...", "Analyzing...", None]:
+    #         session["qualities"].append(quality)
+
+    #     score = last_score.get("score", 100)
+    #     session["scores"].append(score)
+
+    #     for feedback in last_score.get("feedback", []):
+    #         session["feedback_set"].add(feedback)
+
+    #     for risk in last_score.get("risks", []):
+    #         session["risks"].add(risk)
+
+    # cv2.putText(
+    #     frame,
+    #     f"Exercise: {display_exercise}",
+    #     (30, 40),
+    #     cv2.FONT_HERSHEY_SIMPLEX,
+    #     1,
+    #     (0, 255, 0),
+    #     2,
+    #     cv2.LINE_AA,
+    # )
+
+    # cv2.putText(
+    #     frame,
+    #     f"Reps: {display_reps}",
+    #     (30, 80),
+    #     cv2.FONT_HERSHEY_SIMPLEX,
+    #     0.8,
+    #     (255, 255, 0),
+    #     2,
+    #     cv2.LINE_AA,
+    # )
+
+    # return frame, label
     results = pose.process(frame)
     features = feature_extractor.process(results)
 
     label, rep_counts, last_score = classifier.update(features)
     quality = quality_predictor.update(features)
+    risk_flags = detect_risks(features, quality)
 
     frame = draw_pose(frame, results)
 
@@ -171,51 +257,37 @@ def analyze_frame(
     trunk = 0.0
 
     if features is not None:
-        avg_knee = (features.get("left_knee", 0.0) + features.get("right_knee", 0.0)) / 2
+        avg_knee = (
+            (features.get("left_knee") or 0.0) +
+            (features.get("right_knee") or 0.0)
+        ) / 2
 
-        left_elbow = features.get("left_elbow") or 0.0
-        right_elbow = features.get("right_elbow") or 0.0
-        avg_elbow = (left_elbow + right_elbow) / 2
+        avg_elbow = (
+            (features.get("left_elbow") or 0.0) +
+            (features.get("right_elbow") or 0.0)
+        ) / 2
 
         trunk = features.get("trunk") or 0.0
 
     if quality and "Squat" in quality:
         display_exercise = "squat"
         display_reps = rep_counts.get("squat", 0)
+
     elif quality and "Push-up" in quality:
         display_exercise = "push_up"
         display_reps = rep_counts.get("push_up", 0)
+
     else:
         display_exercise = label or "idle"
         display_reps = 0
 
     if session is not None:
-        # session["exercise"] = display_exercise
-        # session["total_reps"] = display_reps
-        # session["squat_reps"] = rep_counts.get("squat", 0)
-        # session["pushup_reps"] = rep_counts.get("push_up", 0)
-
-        # session["exercise"] = display_exercise
-
-        # session["squat_reps"] = rep_counts.get("squat", 0)
-        # session["pushup_reps"] = rep_counts.get("push_up", 0)
-
         session["exercise"] = display_exercise
         session["total_reps"] = display_reps
         session["last_display_reps"] = display_reps
 
         session["squat_reps"] = rep_counts.get("squat", 0)
         session["pushup_reps"] = rep_counts.get("push_up", 0)
-
-        # Store highest rep count seen across the full video
-        session["max_reps"] = max(
-            session.get("max_reps", 0),
-            display_reps,
-            session["squat_reps"],
-            session["pushup_reps"]
-        )
-
-        session["total_reps"] = session["max_reps"]
 
         if features is not None:
             session["avg_knees"].append(avg_knee)
@@ -232,6 +304,9 @@ def analyze_frame(
             session["feedback_set"].add(feedback)
 
         for risk in last_score.get("risks", []):
+            session["risks"].add(risk)
+
+        for risk in risk_flags:
             session["risks"].add(risk)
 
     cv2.putText(
