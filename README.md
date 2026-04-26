@@ -1,70 +1,255 @@
-# PoseInsight: Intelligent Movement Analysis System
+# 🏋️ PoseInsight: Intelligent Movement Analysis System
 
-**PoseInsight** is an AI-powered movement analysis system designed to evaluate exercise form. By bridging the gap between raw pose estimation and actionable coaching, the system extracts biomechanical features to predict movement quality and identify potential injury risks using a hybrid deep learning approach.
+**PoseInsight** is an AI-powered movement analysis platform that evaluates exercise form using **computer vision, machine learning, deep learning, and generative AI feedback**.
 
-The system supports both uploaded video and real-time webcam input.
+The system bridges the gap between raw pose estimation and actionable coaching by transforming human movement into biomechanical insights, exercise classification, repetition counting, movement-quality prediction, injury-risk detection, and Gemini-powered personalized coaching.
 
-## Quick Start
-To run the interactive prototype:
+PoseInsight supports:
 
-1. **Install dependencies**: ```pip install -r requirements.txt```
-2. **Launch the interface**: ```streamlit run app.py```
-3. **Analyze**: Upload a video from the ```data/``` folder (e.g., ```pushup1.mp4```) or use your webcam for real-time tracking.
+- 🎥 Uploaded Video Analysis  
+- 📷 Live Webcam Analysis  
+- 🧠 ML / DL-based Quality Prediction  
+- ⚠️ Injury Risk Detection  
+- 💬 Gemini AI Coaching Feedback  
+
+---
+
+# 🚀 Quick Start
+
+## 1. Clone the repository
+```bash
+git clone <your_repo_url>
+cd PoseInsight
+
+```
+
+## Install dependencies
+
+```
+pip install -r requirements.txt
+```
+
+## (Optional but recommended) Add Gemini API Key
+
+```
+export GEMINI_API_KEY="your_api_key_here"
+```
+
+## Launch the Streamlit app
+
+```
+streamlit run app.py
+```
 
 
 ##  Project Structure
 ```
 PoseInsight/
-├── app.py                # Main Streamlit entry point & UI logic
-├── requirements.txt      # Python dependencies (MediaPipe, OpenCV, etc.)
+├── app.py                       # Main Streamlit UI
+├── build_dataset.py             # Dataset creation pipeline
+├── models_training.ipynb        # RF / MLP / LSTM training notebook
+├── requirements.txt
+│
 ├── core/
-│   ├── pose_estimator.py # MediaPipe landmark extraction engine
-│   └── analysis.py       # Exercise classifier & LSTM form analysis
-├── data/
-│   └── pushup1.mp4       # Sample input for testing
-├── project_docs/
-│   ├── PoseInsight.pdf   # IEEE Preliminary Report
-│   └── Arch_Diagram.png  # System architecture overview
+│   ├── pose_estimator.py        # MediaPipe pose engine
+│   ├── feature_extractor.py     # Joint angles + biomechanical features
+│   ├── classifier.py            # Rule-based exercise classification
+│   ├── rep_segmenter.py         # Repetition counting
+│   ├── quality_predictor.py     # RF / LSTM quality predictor
+│   ├── risk_detection.py        # Injury risk analysis
+│   └── feedback_generator.py    # Gemini coaching + risk summary
+│
 ├── utils/
-│   ├── draw.py           # Skeleton overlay and biomechanical labeling
-│   └── io_video.py       # Video reading, writing, and frame handling
-└── outputs/              # Processed results with pose annotations
+│   ├── draw.py                  # Pose skeleton overlay
+│   ├── io_video.py              # Upload + webcam processing pipeline
+│   └── dataset_writer.py        # Dataset export utilities
+│
+├── models/
+│   ├── random_forest_quality.pkl
+│   ├── mlp_quality.pt
+│   ├── lstm_quality.pt
+│   └── model_metadata.json
+│
+├── data/                        # Good / bad squat + push-up datasets
+├── outputs/                     # Processed videos
+├── plots_charts/                # Model comparisons + confusion matrices
+└── project_docs/                # Architecture + reports
 
 ```
 
+## System Pipeline
 
-## Features & Technology
-PoseInsight uses a multi-stage pipeline to transform raw pixels into coaching insights:
+```
+Video / Webcam Input
+        ↓
+MediaPipe Pose Estimation
+        ↓
+Biomechanical Feature Extraction
+        ↓
+Rule-Based Exercise Classification
+        ↓
+Rep Counting + Movement Segmentation
+        ↓
+RF / MLP / LSTM Quality Prediction
+        ↓
+Risk Detection
+        ↓
+Gemini AI Coaching Feedback
+        ↓
+Interactive Streamlit UI
+```
 
-- **Pose Estimation:** Leverages **MediaPipe (BlazePose)** for real-time 3D body landmark extraction.
-- **Feature Extraction**: Computes frame-level joint angles (knee, hip, elbow) and symmetry metrics.
-- **Exercise Classification (Rule-Based)**: Uses a robust baseline logic to automatically detect the exercise type (e.g., Squat vs. Push-up) based on posture and angle thresholds.
-- **Quality Analysis (LSTM)**: Employs a **Long Short-Term Memory (LSTM)** network to analyze the temporal sequence of the movement. This model classifies the quality of the specific exercise, distinguishing between "Good Form" and errors like "Forward Lean" or "Knee Misalignment."
-- **Coaching Feedback**: Integrates the Gemini API to translate structured outputs into personalized, natural-language coaching tips.
+## Core Features
 
+### 🎯 Pose Estimation
+- MediaPipe BlazePose for real-time landmark extraction
+- 33 body landmarks
+- Upload + webcam compatible
 
-## 📈 Current Status
-The project has successfully moved from a design proposal to a functional end-to-end pipeline:
+### 📐 Feature Extraction
+- Knee angles
+- Hip angles
+- Elbow angles
+- Trunk angle
+- Symmetry metrics
+- Motion progression
 
-- [x] **Full Pipeline**: Video input $\rightarrow$ Pose estimation $\rightarrow$ Visualization.
-- [x] **Feature Engine**: Automated calculation of biomechanical joint angles.
-- [x] **Interface**: Working Streamlit UI with video upload and overlay capabilities.
-- [x] **Hybrid Logic**: Rule-based exercise detection and preliminary quality scoring.
-- [ ] **Next Step**: Training the LSTM on a larger labeled dataset for refined form analysis.
+### 🏃 Exercise Classification
 
+Rule-based baseline detects:
+- Squat
+- Push-up
+- Idle / Unknown
 
-## ⚖️ Responsible AI & Privacy
-We prioritize user privacy and system transparency:
+### 🔁 Repetition Counting
 
-- **Privacy**: All video processing is intended to remain local to minimize the storage of personally identifiable visual data.
-- **Transparency**: The system is designed as an educational and assistive tool; it is not a replacement for professional medical advice or certified coaching.
-- **Robustness**: Ongoing development focuses on ensuring the model performs consistently across different body types, clothing styles, and lighting conditions.
+Tracks:
+- Squat reps
+- Push-up reps
 
-**Author**: Satyabrata Das
+### 🧠 Quality Prediction
 
-**Contact**: satyabradas@ufl.edu
+Trained and compared:
+- Random Forest
+- MLP
+- LSTM
 
-**University**: University of Florida - Applied Deep Learning
+Predicted classes:
+- Good Squat
+- Bad Squat
+- Good Push-up
+- Bad Push-up
+  
+### ⚠️ Injury Risk Detection
 
-**Instructor**: Andrea Ramirez-Salgado
+Examples:
+- Forward lean
+- Knee asymmetry
+- Shallow squat
+- Core collapse
+- Shoulder strain
+  
+### 💬 Gemini Coaching Feedback
 
+Transforms model outputs into:
+- Personalized coaching
+- Form correction
+- Safety recommendations
+
+## Model Training Summary
+
+### Models Evaluated:
+- Random Forest
+- MLP
+- LSTM
+  
+### Current Deployment:
+
+***Random Forest / LSTM hybrid depending stability and demo mode***
+
+### Saved Assets:
+- Dataset distribution
+- RF / MLP / LSTM comparison
+- Confusion matrices
+- Training curves
+
+## 🖥️ User Interface
+
+### Upload Mode
+
+✔ Upload exercise video
+✔ Process full session
+✔ Pose overlay
+✔ Exercise + reps
+✔ Quality prediction
+✔ Gemini coaching
+✔ Injury risk summary
+
+### Live Mode
+
+✔ Real-time webcam
+✔ Fixed-duration movement session
+✔ Post-session review
+✔ Gemini summary
+
+## 📈 Current Project Status
+ - Full end-to-end pipeline
+ - Dataset creation
+ - RF / MLP / LSTM training
+ - Uploaded video analysis
+ - Live webcam analysis
+ - Quality prediction
+ - Risk detection
+ - Gemini AI feedback
+ - Streamlit deployment
+ - Larger dataset expansion (Next step)
+ - FastAPI backend (Next step)
+ - Docker deployment (Next step)
+
+## Responsible AI & Privacy
+### Privacy
+All processing is intended for local execution to reduce exposure of personal video data.
+
+### Transparency
+PoseInsight is an assistive educational system and should not replace:
+
+- Medical diagnosis
+- Physical therapy
+- Professional coaching
+  
+### Fairness & Robustness
+Future improvements include:
+
+- Broader body-type robustness
+- Lighting robustness
+- More exercise classes
+- Larger datasets
+
+## Challenges
+- Limited labeled dataset
+- Frame-level pose noise
+- Rule-based baseline limitations
+- Small-data deep learning instability
+- Webcam variability
+
+## Future Work
+- FastAPI backend
+- Docker deployment
+- Expanded dataset
+- Multi-exercise support
+- Better temporal transformers
+- Mobile deployment
+- Real-time corrective audio coaching
+
+## Academic Context
+
+Course: Applied Deep Learning
+University: University of Florida
+Instructor: Andrea Ramirez-Salgado
+
+## Author
+
+Satyabrata Das
+M.S. Artificial Intelligence Systems
+University of Florida
+satyabradas@ufl.edu
