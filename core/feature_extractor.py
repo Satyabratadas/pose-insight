@@ -2,8 +2,9 @@ import numpy as np
 from collections import deque
 
 class FeatureExtractor:
-    def __init__(self, smooth_window = 5):
+    def __init__(self, smooth_window = 5, visibility_thresh=0.5):
         self.smooth_window = smooth_window
+        self.visibility_thresh = visibility_thresh
 
         # store history for smoothing
         self.history = {
@@ -64,53 +65,6 @@ class FeatureExtractor:
     
     # Compute angles
 
-    # def compute_angles(self, lm):
-    #     if lm is None:
-    #         return None
-        
-    #     angles = {}
-
-    #     # Knee angles
-    #     angles["left_knee"] = self.calculate_angle(
-    #         lm["left_hip"], lm["left_knee"], lm["left_ankle"]
-    #     )
-    #     angles["right_knee"] = self.calculate_angle(
-    #         lm["right_hip"], lm["right_knee"], lm["right_ankle"]
-    #     )
-
-    #     # Hip angles
-    #     angles["left_hip"] = self.calculate_angle(
-    #         lm["left_shoulder"], lm["left_hip"], lm["left_knee"]
-    #     )
-    #     angles["right_hip"] = self.calculate_angle(
-    #         lm["right_shoulder"], lm["right_hip"], lm["right_knee"]
-    #     )
-
-    #     # Elbow angles (for push-up)
-    #     angles["left_elbow"] = self.calculate_angle(
-    #         lm["left_shoulder"], lm["left_elbow"], lm["left_wrist"]
-    #     )
-    #     angles["right_elbow"] = self.calculate_angle(
-    #         lm["right_shoulder"], lm["right_elbow"], lm["right_wrist"]
-    #     )
-
-    #     # Trunk angle (body tilt)
-    #     mid_shoulder = (
-    #         (lm["left_shoulder"][0] + lm["right_shoulder"][0]) / 2,
-    #         (lm["left_shoulder"][1] + lm["right_shoulder"][1]) / 2,
-    #     )
-    #     mid_hip = (
-    #         (lm["left_hip"][0] + lm["right_hip"][0]) / 2,
-    #         (lm["left_hip"][1] + lm["right_hip"][1]) / 2,
-    #     )
-
-    #     vertical_ref = (mid_hip[0], mid_hip[1] - 0.1)
-
-    #     angles["trunk"] = self.calculate_angle(
-    #         mid_shoulder, mid_hip, vertical_ref
-    #     )
-
-    #     return angles
     def compute_angles(self, lm, vis=None):
         if lm is None:
             return None
@@ -183,42 +137,20 @@ class FeatureExtractor:
     
     # Apply smoothing
 
-    # def smooth_angles(self, angles):
-    #     if angles is None:
-    #         return None
-        
-    #     smoothed = {}
-
-    #     for key in angles:
-    #         self.history[key].append(angles[key])
-    #         smoothed[key] = np.mean(self.history[key])
-        
-    #     return smoothed
-
     def smooth_angles(self, angles):
         if angles is None:
             return None
-
         smoothed = {}
-
         for key, value in angles.items():
             if value is None:
                 smoothed[key] = None
                 continue
-
+            if key not in self.history:                    
+                self.history[key] = deque(maxlen=self.smooth_window)
             self.history[key].append(value)
             smoothed[key] = float(np.mean(self.history[key]))
-
         return smoothed
-    
     # Main pipeline
-
-    # def process(self, results):
-    #     lm = self.extract_landmarks(results)
-    #     angles = self.compute_angles(lm)
-    #     smoothed = self.smooth_angles(angles)
-
-    #     return smoothed
 
     def process(self, results):
         lm = self.extract_landmarks(results)

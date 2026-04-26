@@ -1,7 +1,7 @@
 import numpy as np
 from collections import deque, Counter
-from exercises.squat import SquatCounter
-from exercises.pushup import PushUpCounter
+from exercises.squat import SquatCounter, score_squat
+from exercises.pushup import PushUpCounter, score_pushup
 
 
 class ExerciseClassifier:
@@ -34,23 +34,31 @@ class ExerciseClassifier:
     PUSHUP_DOWN_FRAC = 0.45   # elbow must drop below this fraction → "down"
     PUSHUP_UP_FRAC   = 0.75   # elbow must rise above this fraction → "up"
 
+    # ── Posture gate thresholds ──────────────────────────────────────────────
+    # Trunk angle is measured from vertical (0° = perfectly upright).
+    # If the person is clearly upright  → only squat/idle are possible.
+    # If the person is clearly horizontal → only push_up/idle are possible.
+    STANDING_TRUNK_MAX   = 45   # avg trunk < 45°  → "standing" zone
+    HORIZONTAL_TRUNK_MIN = 55   # avg trunk > 55°  → "horizontal" zone
+    # 45°–55° is a neutral dead-band — no zone constraint applied.
 
     def __init__(self, window_size: int = 15, pred_window: int = 8):
         self.window_size = window_size
         self.history:      deque = deque(maxlen=window_size)
         self.pred_history: deque = deque(maxlen=pred_window)
         self.last_stable_label = "idle"
+        self.last_score = {"score": 100, "feedback": [], "risks": []}
 
-        # ── each exercise has its own counter 
+        # ── each exercise has its own counter
         self.counters = {
             "squat":   SquatCounter(),
             "push_up": PushUpCounter(),
             # future: "pullup": PullUpCounter(), "lunge": LungeCounter()
         }
 
-    # Methods that video_processor.py calls from outside
+    # ── Methods that video_processor.py calls from outside ───────────────────
 
-    def update(self, features: dict | None) -> tuple[str, dict]:
+    def update(self, features: dict | None) -> tuple[str, dict, dict]:
         """
         Feed one frame of joint angles.
 
@@ -65,7 +73,7 @@ class ExerciseClassifier:
         """
         if features is None:
             self.pred_history.append(self.last_stable_label)
-            return self.last_stable_label, self._rep_counts()
+            return self.last_stable_label, self._rep_counts(), self.last_score
 
         self.history.append(features)
 
@@ -74,9 +82,9 @@ class ExerciseClassifier:
             return self.last_stable_label, self._rep_counts()
 
         raw = self._classify()
-        self._update_counter(raw)    ## repetation count
+        self._update_counter(raw)    # repetition count
         self._append_and_smooth(raw)
-        return self.last_stable_label, self._rep_counts()
+        return self.last_stable_label, self._rep_counts(), self.last_score
 
     def reset_reps(self) -> None:
         for counter in self.counters.values():
@@ -95,11 +103,36 @@ class ExerciseClassifier:
             knees = sig["_knees"]
             self.counters["squat"].update(knees)
 
+            # Score only when in "down" phase (bottom of squat)
+            if self.counters["squat"].phase == "down":
+                self.last_score = score_squat(self.history[-1])  # latest frame angles
+
         elif label == "push_up":
             elbows = sig["_elbows"]
             self.counters["push_up"].update(elbows)
 
-    # Classification 
+            # Score only when in "down" phase (bottom of push-up)
+            if self.counters["push_up"].phase == "down":
+                self.last_score = score_pushup(self.history[-1])
+
+    # ── Posture gate ─────────────────────────────────────────────────────────
+
+    def _posture_zone(self, avg_trunk: float) -> str:
+        """
+        Classify gross body posture from the average trunk angle (degrees from vertical).
+
+        Returns:
+            'standing'   → person is upright   → only squat / idle are allowed
+            'horizontal' → person is lying down → only push_up / idle are allowed
+            'neutral'    → in-between, no constraint applied
+        """
+        if avg_trunk < self.STANDING_TRUNK_MAX:
+            return "standing"
+        if avg_trunk > self.HORIZONTAL_TRUNK_MIN:
+            return "horizontal"
+        return "neutral"
+
+    # ── Classification ────────────────────────────────────────────────────────
 
     def _classify(self) -> str:
         sig = self._motion_signature()
@@ -108,11 +141,19 @@ class ExerciseClassifier:
         if sig["total_motion"] < self.IDLE_MOTION_THRESHOLD:
             return "idle"
 
+        # ── Posture gate ─────────────────────────────────────────────────────
+        # Lock out the wrong exercise class based on how the body is oriented.
+        #   • Standing upright  → push_up is impossible, skip that branch entirely
+        #   • Lying horizontal  → squat   is impossible, skip that branch entirely
+        # This prevents a squat from ever being mislabelled as push_up and vice-versa.
+        zone = self._posture_zone(sig["avg_trunk"])
+
         # 2. Squat
         #    • Knees and hips dominate  (lower >> upper)
         #    • Elbows quiet
         #    • Trunk upright
-        if (
+        #    • Posture gate: skipped when person is clearly horizontal
+        if zone != "horizontal" and (
             sig["knee_motion"]  > self.SQUAT_KNEE_MOTION
             and sig["hip_motion"]   > self.SQUAT_HIP_MOTION
             and sig["elbow_motion"] < self.SQUAT_ELBOW_MAX
@@ -125,7 +166,8 @@ class ExerciseClassifier:
         #    • Elbows dominate (upper >> lower)
         #    • Legs / trunk quiet
         #    • Trunk horizontal (large angle from vertical)
-        if (
+        #    • Posture gate: skipped when person is clearly standing
+        if zone != "standing" and (
             sig["elbow_motion"] > self.PUSHUP_ELBOW_MOTION
             and sig["lower_body"]   < self.PUSHUP_LOWER_MAX
             and sig["trunk_motion"] < self.PUSHUP_TRUNK_MAX
@@ -135,7 +177,7 @@ class ExerciseClassifier:
 
         return "idle"   # ambiguous → treat as idle, NOT "unknown"
 
-    # Motion features
+    # ── Motion features ───────────────────────────────────────────────────────
 
     def _motion_signature(self) -> dict:
         knees, hips, elbows, trunks = [], [], [], []
@@ -143,8 +185,11 @@ class ExerciseClassifier:
         for f in self.history:
             knees.append( (f["left_knee"]   + f["right_knee"])  / 2)
             hips.append(  (f["left_hip"]    + f["right_hip"])   / 2)
-            elbows.append((f["left_elbow"]  + f["right_elbow"]) / 2)
-            trunks.append(f["trunk"])
+            le, re = f.get("left_elbow"), f.get("right_elbow")
+            valid_elbows = [v for v in [le, re] if v is not None]
+            elbows.append(float(np.mean(valid_elbows)) if valid_elbows else 0.0)
+            trunk = f.get("trunk")
+            trunks.append(trunk if trunk is not None else 0.0)
 
         knee_motion  = max(knees)  - min(knees)
         hip_motion   = max(hips)   - min(hips)
