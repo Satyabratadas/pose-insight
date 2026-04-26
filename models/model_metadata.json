@@ -7,7 +7,7 @@
     },
     "rf_accuracy": 0.9705882352941176,
     "mlp_accuracy": 0.8529411764705882,
-    "lstm_accuracy": 0.9117647058823529,
+    "lstm_accuracy": 0.8823529411764706,
     "best_model": "random_forest",
     "input_dim": 240,
     "seq_len": 30,
