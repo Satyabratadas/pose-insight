@@ -79,7 +79,7 @@ class ExerciseClassifier:
 
         if len(self.history) < self.MIN_FRAMES_TO_CLASSIFY:
             self._append_and_smooth("idle")
-            return self.last_stable_label, self._rep_counts()
+            return self.last_stable_label, self._rep_counts(), self.last_score
 
         raw = self._classify()
         self._update_counter(raw)    # repetition count
