@@ -86,20 +86,57 @@ if option == "Upload Video":
 elif option == "Live Camera":
     st.write("Live webcam feed")
 
-    if "run_camera" not in st.session_state:
-        st.session_state.run_camera = False
-
-    col1, col2 = st.columns(2)
-
-    with col1:
-        if st.button("Start Camera"):
-            st.session_state.run_camera = True
-
-    with col2:
-        if st.button("Stop Camera"):
-            st.session_state.run_camera = False
+    duration = st.slider(
+        "Live session duration",
+        min_value=5,
+        max_value=30,
+        value=10,
+        step=5
+    )
 
     frame_placeholder = st.empty()
 
-    if st.session_state.run_camera:
-        run_webcam(frame_placeholder, lambda: not st.session_state.run_camera)
+    if st.button("Start Live Analysis"):
+        with st.spinner(f"Analyzing live movement for {duration} seconds..."):
+            session = run_webcam(frame_placeholder, duration_seconds=duration)
+
+        if session:
+            left_col, right_col = st.columns([1.4, 1])
+
+            with left_col:
+                st.subheader("📷 Live Camera Result")
+                st.info("Live analysis completed successfully.")
+
+            with right_col:
+                st.subheader("📊 Session Report")
+
+                st.metric("Exercise", session["exercise"].replace("_", " ").title())
+                st.metric("Total Reps", session["total_reps"])
+
+                quality_label = session.get("quality_label", "Unknown")
+
+                if "Good" in quality_label:
+                    st.success(f"✅ {quality_label}")
+                elif "Bad" in quality_label:
+                    st.error(f"❌ {quality_label}")
+                else:
+                    st.info(f"🔍 {quality_label}")
+
+                st.subheader("📐 Average Angles")
+                st.metric("Knee", f"{session.get('knee_angle', 0.0)}°")
+                st.metric("Elbow", f"{session.get('elbow_angle', 0.0)}°")
+                st.metric("Trunk", f"{session.get('trunk_angle', 0.0)}°")
+
+            st.divider()
+
+            st.subheader("💬 Coaching Feedback")
+            feedback_text = generate_feedback(session)
+            st.info(feedback_text)
+
+            st.subheader("⚠️ Injury Risk Summary")
+            risk_summary = generate_risk_summary(session)
+
+            if session.get("risks"):
+                st.warning(risk_summary)
+            else:
+                st.success(risk_summary)

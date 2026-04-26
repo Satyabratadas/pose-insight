@@ -3,7 +3,7 @@ import subprocess
 from collections import Counter
 from core.risk_detection import detect_risks
 import cv2
-
+import time
 from core.pose_estimator import PoseEstimator
 from core.feature_extractor import FeatureExtractor
 from core.classifier import ExerciseClassifier
@@ -115,17 +115,93 @@ def process_video(input_path, output_path):
     return True, session
 
 
-def run_webcam(frame_placeholder, stop_flag):
+# def run_webcam(frame_placeholder, stop_flag):
+#     pose = PoseEstimator()
+#     feature_extractor = FeatureExtractor()
+#     classifier = ExerciseClassifier()
+#     quality_predictor = QualityPredictor()
+#     session = create_empty_session()
+#     cap = cv2.VideoCapture(0)
+
+#     if not cap.isOpened():
+#         print("Error: Could not open webcam")
+#         return
+
+#     while cap.isOpened():
+#         ret, frame = cap.read()
+#         if not ret:
+#             break
+
+#         frame, _ = analyze_frame(
+#             frame=frame,
+#             pose=pose,
+#             feature_extractor=feature_extractor,
+#             classifier=classifier,
+#             quality_predictor=quality_predictor,
+#             session=None,
+#         )
+
+#         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+#         frame_placeholder.image(frame_rgb, channels="RGB")
+
+#         if stop_flag():
+#             break
+
+#     cap.release()
+# def run_webcam(frame_placeholder, stop_flag):
+#     pose = PoseEstimator()
+#     feature_extractor = FeatureExtractor()
+#     classifier = ExerciseClassifier()
+#     quality_predictor = QualityPredictor()
+
+#     session = create_empty_session()
+
+#     cap = cv2.VideoCapture(0)
+
+#     if not cap.isOpened():
+#         print("Error: Could not open webcam")
+#         return None
+
+#     while cap.isOpened():
+#         ret, frame = cap.read()
+#         if not ret:
+#             break
+
+#         frame, _ = analyze_frame(
+#             frame,
+#             pose,
+#             feature_extractor,
+#             classifier,
+#             quality_predictor,
+#             session=session,
+#         )
+
+#         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+#         frame_placeholder.image(frame_rgb, channels="RGB")
+
+#         if stop_flag():
+#             break
+
+#     cap.release()
+
+#     finalize_session(session)
+
+#     return session
+def run_webcam(frame_placeholder, duration_seconds=10):
     pose = PoseEstimator()
     feature_extractor = FeatureExtractor()
     classifier = ExerciseClassifier()
     quality_predictor = QualityPredictor()
 
+    session = create_empty_session()
+
     cap = cv2.VideoCapture(0)
 
     if not cap.isOpened():
         print("Error: Could not open webcam")
-        return
+        return None
+
+    start_time = time.time()
 
     while cap.isOpened():
         ret, frame = cap.read()
@@ -133,21 +209,27 @@ def run_webcam(frame_placeholder, stop_flag):
             break
 
         frame, _ = analyze_frame(
-            frame=frame,
-            pose=pose,
-            feature_extractor=feature_extractor,
-            classifier=classifier,
-            quality_predictor=quality_predictor,
-            session=None,
+            frame,
+            pose,
+            feature_extractor,
+            classifier,
+            quality_predictor,
+            session=session,
         )
 
         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         frame_placeholder.image(frame_rgb, channels="RGB")
 
-        if stop_flag():
+        # Stop automatically after selected duration
+        elapsed_time = time.time() - start_time
+        if elapsed_time >= duration_seconds:
             break
 
     cap.release()
+
+    finalize_session(session)
+
+    return session
 
 
 def analyze_frame(frame, pose, feature_extractor,
