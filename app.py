@@ -31,57 +31,47 @@ if option == "Upload Video":
         output_filename = f"{name}_output.mp4"
         output_path = os.path.join("outputs", output_filename)
 
-        status_text = st.empty()
-        status_text.write("Processing...")
-
-        success, session = process_video(temp_input.name, output_path)
-
-        status_text.empty()
+        with st.spinner("Analyzing movement..."):
+            success, session = process_video(temp_input.name, output_path)
 
         if success and os.path.exists(output_path):
-            st.success("✅ Done!")
-            st.write(f"Output file size: {os.path.getsize(output_path)} bytes")
+            st.success("✅ Analysis Complete")
 
             with open(output_path, "rb") as f:
                 video_bytes = f.read()
 
-            st.video(video_bytes)
+            left_col, right_col = st.columns([1.4, 1])
 
-            st.subheader("📊 Session Report")
+            with left_col:
+                st.subheader("🎥 Processed Video")
+                st.video(video_bytes)
 
-            # col1, col2, col3 = st.columns(3)
-            # col1.metric("Exercise", session["exercise"].replace("_", " ").title())
-            # col2.metric("Total Reps", session["total_reps"])
-            # col3.metric("Avg Form Score", f"{session['avg_score']}/100")
+            with right_col:
+                st.subheader("📊 Session Report")
 
-            col1, col2 = st.columns(2)
-            col1.metric("Exercise", session["exercise"].replace("_", " ").title())
-            col2.metric("Total Reps", session["total_reps"])
+                st.metric("Exercise", session["exercise"].replace("_", " ").title())
+                st.metric("Total Reps", session["total_reps"])
 
-            st.subheader("📐 Average Joint Angles")
+                quality_label = session.get("quality_label", "Unknown")
+                if "Good" in quality_label:
+                    st.success(f"✅ {quality_label}")
+                elif "Bad" in quality_label:
+                    st.error(f"❌ {quality_label}")
+                else:
+                    st.info(f"🔍 {quality_label}")
 
-            col4, col5, col6 = st.columns(3)
-            col4.metric("Avg Knee Angle", f"{session.get('knee_angle', 0.0)}°")
-            col5.metric("Avg Elbow Angle", f"{session.get('elbow_angle', 0.0)}°")
-            col6.metric("Avg Trunk Angle", f"{session.get('trunk_angle', 0.0)}°")
+                st.subheader("📐 Average Angles")
+                st.metric("Knee", f"{session.get('knee_angle', 0.0)}°")
+                st.metric("Elbow", f"{session.get('elbow_angle', 0.0)}°")
+                st.metric("Trunk", f"{session.get('trunk_angle', 0.0)}°")
 
-            quality_label = session.get("quality_label", "Unknown")
-
-            if "Good" in quality_label:
-                st.success(f"✅ Overall Quality: {quality_label}")
-            elif "Bad" in quality_label:
-                st.error(f"❌ Overall Quality: {quality_label}")
-            else:
-                st.info(f"🔍 Quality: {quality_label}")
+            st.divider()
 
             st.subheader("💬 Coaching Feedback")
-
             feedback_text = generate_feedback(session)
-
             st.info(feedback_text)
 
             st.subheader("⚠️ Injury Risk Summary")
-
             risk_summary = generate_risk_summary(session)
 
             if session.get("risks"):
