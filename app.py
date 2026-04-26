@@ -4,6 +4,7 @@ import tempfile
 import streamlit as st
 
 from utils.io_video import process_video, run_webcam
+from core.feedback_generator import generate_feedback, generate_risk_summary
 
 
 st.title("🏋️ Pose Insight")
@@ -73,17 +74,20 @@ if option == "Upload Video":
             else:
                 st.info(f"🔍 Quality: {quality_label}")
 
-            if session.get("feedback"):
-                st.subheader("💬 Form Feedback")
-                for fb in session["feedback"]:
-                    st.warning(fb)
-            else:
-                st.info("✅ No major form issues detected.")
+            st.subheader("💬 Coaching Feedback")
+
+            feedback_text = generate_feedback(session)
+
+            st.info(feedback_text)
+
+            st.subheader("⚠️ Injury Risk Summary")
+
+            risk_summary = generate_risk_summary(session)
 
             if session.get("risks"):
-                st.subheader("⚠️ Injury Risks Detected")
-                for risk in session["risks"]:
-                    st.error(f"Risk: {risk.replace('_', ' ').title()}")
+                st.warning(risk_summary)
+            else:
+                st.success(risk_summary)
 
         else:
             st.error("Output video could not be generated.")
