@@ -81,10 +81,7 @@ class ExerciseClassifier:
             self._append_and_smooth("idle")
             return self.last_stable_label, self._rep_counts(), self.last_score
 
-        # raw = self._classify()
-        # self._update_counter(raw)    # repetition count
-        # self._append_and_smooth(raw)
-        # return self.last_stable_label, self._rep_counts(), self.last_score
+        
         raw = self._classify()
         self._append_and_smooth(raw)
         self._update_counter(self.last_stable_label)
@@ -139,47 +136,6 @@ class ExerciseClassifier:
     # ── Classification ────────────────────────────────────────────────────────
 
     def _classify(self) -> str:
-        # sig = self._motion_signature()
-
-        # # 1. Idle — nothing meaningful moving
-        # if sig["total_motion"] < self.IDLE_MOTION_THRESHOLD:
-        #     return "idle"
-
-        # # ── Posture gate ─────────────────────────────────────────────────────
-        # # Lock out the wrong exercise class based on how the body is oriented.
-        # #   • Standing upright  → push_up is impossible, skip that branch entirely
-        # #   • Lying horizontal  → squat   is impossible, skip that branch entirely
-        # # This prevents a squat from ever being mislabelled as push_up and vice-versa.
-        # zone = self._posture_zone(sig["avg_trunk"])
-
-        # # 2. Squat
-        # #    • Knees and hips dominate  (lower >> upper)
-        # #    • Elbows quiet
-        # #    • Trunk upright
-        # #    • Posture gate: skipped when person is clearly horizontal
-        # if zone != "horizontal" and (
-        #     sig["knee_motion"]  > self.SQUAT_KNEE_MOTION
-        #     and sig["hip_motion"]   > self.SQUAT_HIP_MOTION
-        #     and sig["elbow_motion"] < self.SQUAT_ELBOW_MAX
-        #     and sig["avg_trunk"]    < self.SQUAT_TRUNK_MAX
-        #     and sig["lower_body"]   > sig["upper_body"] + self.SQUAT_LOWER_UPPER_LEAD
-        # ):
-        #     return "squat"
-
-        # # 3. Push-up
-        # #    • Elbows dominate (upper >> lower)
-        # #    • Legs / trunk quiet
-        # #    • Trunk horizontal (large angle from vertical)
-        # #    • Posture gate: skipped when person is clearly standing
-        # if zone != "standing" and (
-        #     sig["elbow_motion"] > self.PUSHUP_ELBOW_MOTION
-        #     and sig["lower_body"]   < self.PUSHUP_LOWER_MAX
-        #     and sig["trunk_motion"] < self.PUSHUP_TRUNK_MAX
-        #     and sig["upper_body"]   > sig["lower_body"] + self.PUSHUP_UPPER_LOWER_LEAD
-        # ):
-        #     return "push_up"
-
-        # return "idle"   # ambiguous → treat as idle, NOT "unknown"
         sig = self._motion_signature()
 
         if sig["total_motion"] < self.IDLE_MOTION_THRESHOLD:
