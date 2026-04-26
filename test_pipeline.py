@@ -13,20 +13,6 @@ pose = mp.solutions.pose.Pose(static_image_mode=False)
 rep_count = 0
 frame_count = 0
 
-# while cap.isOpened():
-#     ret, frame = cap.read()
-#     if not ret:
-#         break
-#     frame_count += 1
-#     rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-#     results = pose.process(rgb)
-#     angles = extractor.process(results)
-
-#     if angles:
-#         rep = segmenter.update(angles)
-#         if rep:
-#             rep_count += 1
-#             print(f"Rep {rep_count} detected — {len(rep)} frames")
 while cap.isOpened():
     ret, frame = cap.read()
     if not ret:
