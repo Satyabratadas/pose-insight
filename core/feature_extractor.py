@@ -2,8 +2,9 @@ import numpy as np
 from collections import deque
 
 class FeatureExtractor:
-    def __init__(self, smooth_window = 5):
+    def __init__(self, smooth_window = 5, visibility_thresh=0.5):
         self.smooth_window = smooth_window
+        self.visibility_thresh = visibility_thresh
 
         # store history for smoothing
         self.history = {
@@ -139,19 +140,16 @@ class FeatureExtractor:
     def smooth_angles(self, angles):
         if angles is None:
             return None
-
         smoothed = {}
-
         for key, value in angles.items():
             if value is None:
                 smoothed[key] = None
                 continue
-
+            if key not in self.history:                    
+                self.history[key] = deque(maxlen=self.smooth_window)
             self.history[key].append(value)
             smoothed[key] = float(np.mean(self.history[key]))
-
         return smoothed
-    
     # Main pipeline
 
     def process(self, results):
