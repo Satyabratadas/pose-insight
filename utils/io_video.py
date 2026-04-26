@@ -1,41 +1,61 @@
+import os
+import subprocess
+from collections import Counter
+from core.risk_detection import detect_risks
 import cv2
-from core.pose_estimator import PoseEstimator
-from core.feature_extractor import FeatureExtractor
-
-import cv2
+import time
 from core.pose_estimator import PoseEstimator
 from core.feature_extractor import FeatureExtractor
 from core.classifier import ExerciseClassifier
+from core.quality_predictor import QualityPredictor
 from utils.draw import draw_pose
-import os
-import subprocess
+
+
+def create_empty_session():
+    return {
+        "qualities": [],
+        "scores": [],
+        "feedback_set": set(),
+        "risks": set(),
+        "exercise": "unknown",
+        "total_reps": 0,
+        "avg_knees": [],
+        "avg_elbows": [],
+        "avg_trunks": [],
+        "knee_angle": 0.0,
+        "elbow_angle": 0.0,
+        "trunk_angle": 0.0,
+        "avg_score": 100,
+        "quality_label": "Unknown",
+        "feedback": [],
+    }
 
 
 def process_video(input_path, output_path):
     pose = PoseEstimator()
     feature_extractor = FeatureExtractor()
     classifier = ExerciseClassifier()
+    quality_predictor = QualityPredictor()
+
+    session = create_empty_session()
 
     cap = cv2.VideoCapture(input_path)
-    base, ext = os.path.splitext(output_path)
-    temp_output_path = f"{base}_temp{ext}"
+
+    base, _ = os.path.splitext(output_path)
+    temp_output_path = f"{base}_temp.mp4"
 
     if not cap.isOpened():
         print("Error: Could not open input video")
-        return False
+        return False, session
 
-    width  = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    fps    = cap.get(cv2.CAP_PROP_FPS)
-
-    print(f"Input video width: {width}")
-    print(f"Input video height: {height}")
-    print(f"Input video fps: {fps}")
+    fps = cap.get(cv2.CAP_PROP_FPS)
 
     if width == 0 or height == 0:
         print("Error: Invalid video dimensions")
         cap.release()
-        return False
+        return False, session
 
     if not fps or fps == 0:
         fps = 20.0
@@ -46,131 +66,383 @@ def process_video(input_path, output_path):
     if not out.isOpened():
         print("Error: Could not open VideoWriter")
         cap.release()
-        return False
-
-    frame_count = 0
+        return False, session
 
     while cap.isOpened():
         ret, frame = cap.read()
         if not ret:
             break
 
-        frame, label = analyze_frame(frame, pose, feature_extractor, classifier)
-        # print("label", label)
+        frame, _ = analyze_frame(
+            frame=frame,
+            pose=pose,
+            feature_extractor=feature_extractor,
+            classifier=classifier,
+            quality_predictor=quality_predictor,
+            session=session,
+        )
 
         out.write(frame)
-        frame_count += 1
 
     cap.release()
     out.release()
 
-    print(f"Finished writing {frame_count} frames")
-    print(f"Temp output exists: {os.path.exists(temp_output_path)}")
-
     command = [
-        "ffmpeg", "-y",
-        "-i", temp_output_path,
-        "-vcodec", "libx264",
-        "-acodec", "aac",
+        "ffmpeg",
+        "-y",
+        "-i",
+        temp_output_path,
+        "-vcodec",
+        "libx264",
+        "-pix_fmt",
+        "yuv420p",
+        "-acodec",
+        "aac",
         output_path,
     ]
 
     try:
         subprocess.run(command, check=True)
-        print(f"Converted output saved at: {output_path}")
-        print(f"Output exists: {os.path.exists(output_path)}")
-        if os.path.exists(output_path):
-            print(f"Output file size: {os.path.getsize(output_path)} bytes")
     except subprocess.CalledProcessError as e:
         print("FFmpeg conversion failed:", e)
-        return False
+        return False, session
 
     if os.path.exists(temp_output_path):
         os.remove(temp_output_path)
 
-    return True
+    finalize_session(session)
+
+    return True, session
 
 
-def run_webcam(frame_placeholder, stop_flag):
+# def run_webcam(frame_placeholder, stop_flag):
+#     pose = PoseEstimator()
+#     feature_extractor = FeatureExtractor()
+#     classifier = ExerciseClassifier()
+#     quality_predictor = QualityPredictor()
+#     session = create_empty_session()
+#     cap = cv2.VideoCapture(0)
+
+#     if not cap.isOpened():
+#         print("Error: Could not open webcam")
+#         return
+
+#     while cap.isOpened():
+#         ret, frame = cap.read()
+#         if not ret:
+#             break
+
+#         frame, _ = analyze_frame(
+#             frame=frame,
+#             pose=pose,
+#             feature_extractor=feature_extractor,
+#             classifier=classifier,
+#             quality_predictor=quality_predictor,
+#             session=None,
+#         )
+
+#         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+#         frame_placeholder.image(frame_rgb, channels="RGB")
+
+#         if stop_flag():
+#             break
+
+#     cap.release()
+# def run_webcam(frame_placeholder, stop_flag):
+#     pose = PoseEstimator()
+#     feature_extractor = FeatureExtractor()
+#     classifier = ExerciseClassifier()
+#     quality_predictor = QualityPredictor()
+
+#     session = create_empty_session()
+
+#     cap = cv2.VideoCapture(0)
+
+#     if not cap.isOpened():
+#         print("Error: Could not open webcam")
+#         return None
+
+#     while cap.isOpened():
+#         ret, frame = cap.read()
+#         if not ret:
+#             break
+
+#         frame, _ = analyze_frame(
+#             frame,
+#             pose,
+#             feature_extractor,
+#             classifier,
+#             quality_predictor,
+#             session=session,
+#         )
+
+#         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+#         frame_placeholder.image(frame_rgb, channels="RGB")
+
+#         if stop_flag():
+#             break
+
+#     cap.release()
+
+#     finalize_session(session)
+
+#     return session
+def run_webcam(frame_placeholder, duration_seconds=10):
     pose = PoseEstimator()
     feature_extractor = FeatureExtractor()
     classifier = ExerciseClassifier()
+    quality_predictor = QualityPredictor()
+
+    session = create_empty_session()
 
     cap = cv2.VideoCapture(0)
 
     if not cap.isOpened():
         print("Error: Could not open webcam")
-        return
+        return None
+
+    start_time = time.time()
 
     while cap.isOpened():
         ret, frame = cap.read()
         if not ret:
             break
 
-        frame, label = analyze_frame(frame, pose, feature_extractor, classifier)
-        # print("label", label)
+        frame, _ = analyze_frame(
+            frame,
+            pose,
+            feature_extractor,
+            classifier,
+            quality_predictor,
+            session=session,
+        )
 
         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         frame_placeholder.image(frame_rgb, channels="RGB")
 
-        if stop_flag():
+        # Stop automatically after selected duration
+        elapsed_time = time.time() - start_time
+        if elapsed_time >= duration_seconds:
             break
 
     cap.release()
 
+    finalize_session(session)
 
-def analyze_frame(frame, pose, feature_extractor, classifier):
-    results  = pose.process(frame)
+    return session
+
+
+def analyze_frame(frame, pose, feature_extractor,
+    classifier, quality_predictor, session=None):
+
+    # results = pose.process(frame)
+    # features = feature_extractor.process(results)
+
+    # label, rep_counts, last_score = classifier.update(features)
+    # quality = quality_predictor.update(features)
+    # risk_flags = detect_risks(features, quality)
+
+    # frame = draw_pose(frame, results)
+
+    # avg_knee = 0.0
+    # avg_elbow = 0.0
+    # trunk = 0.0
+
+    # if features is not None:
+    #     avg_knee = (features.get("left_knee", 0.0) + features.get("right_knee", 0.0)) / 2
+
+    #     left_elbow = features.get("left_elbow") or 0.0
+    #     right_elbow = features.get("right_elbow") or 0.0
+    #     avg_elbow = (left_elbow + right_elbow) / 2
+
+    #     trunk = features.get("trunk") or 0.0
+
+    # if quality and "Squat" in quality:
+    #     display_exercise = "squat"
+    #     display_reps = rep_counts.get("squat", 0)
+    # elif quality and "Push-up" in quality:
+    #     display_exercise = "push_up"
+    #     display_reps = rep_counts.get("push_up", 0)
+    # else:
+    #     display_exercise = label or "idle"
+    #     display_reps = 0
+
+    # if session is not None:
+    #     session["exercise"] = display_exercise
+    #     session["total_reps"] = display_reps
+    #     session["last_display_reps"] = display_reps
+
+    #     session["squat_reps"] = rep_counts.get("squat", 0)
+    #     session["pushup_reps"] = rep_counts.get("push_up", 0)
+
+    #     # Store highest rep count seen across the full video
+    #     session["max_reps"] = max(
+    #         session.get("max_reps", 0),
+    #         display_reps,
+    #         session["squat_reps"],
+    #         session["pushup_reps"]
+    #     )
+
+    #     session["total_reps"] = session["max_reps"]
+
+    #     if features is not None:
+    #         session["avg_knees"].append(avg_knee)
+    #         session["avg_elbows"].append(avg_elbow)
+    #         session["avg_trunks"].append(trunk)
+
+    #     if quality not in ["Collecting...", "Analyzing...", None]:
+    #         session["qualities"].append(quality)
+
+    #     score = last_score.get("score", 100)
+    #     session["scores"].append(score)
+
+    #     for feedback in last_score.get("feedback", []):
+    #         session["feedback_set"].add(feedback)
+
+    #     for risk in last_score.get("risks", []):
+    #         session["risks"].add(risk)
+
+    # cv2.putText(
+    #     frame,
+    #     f"Exercise: {display_exercise}",
+    #     (30, 40),
+    #     cv2.FONT_HERSHEY_SIMPLEX,
+    #     1,
+    #     (0, 255, 0),
+    #     2,
+    #     cv2.LINE_AA,
+    # )
+
+    # cv2.putText(
+    #     frame,
+    #     f"Reps: {display_reps}",
+    #     (30, 80),
+    #     cv2.FONT_HERSHEY_SIMPLEX,
+    #     0.8,
+    #     (255, 255, 0),
+    #     2,
+    #     cv2.LINE_AA,
+    # )
+
+    # return frame, label
+    results = pose.process(frame)
     features = feature_extractor.process(results)
 
-    # classifier returns (label, rep_counts) — unpack both
-    label, rep_counts = classifier.update(features)
+    label, rep_counts, last_score = classifier.update(features)
+    quality = quality_predictor.update(features)
+    risk_flags = detect_risks(features, quality)
 
     frame = draw_pose(frame, results)
 
-    avg_knee  = 0.0
+    avg_knee = 0.0
     avg_elbow = 0.0
-    trunk     = 0.0
+    trunk = 0.0
 
     if features is not None:
-        avg_knee  = (features["left_knee"]  + features["right_knee"])  / 2
-        avg_elbow = (features["left_elbow"] + features["right_elbow"]) / 2
-        trunk     = features["trunk"]
+        avg_knee = (
+            (features.get("left_knee") or 0.0) +
+            (features.get("right_knee") or 0.0)
+        ) / 2
 
-    # ── winner-takes-all: show only the exercise with more reps ──
-    squat_reps  = rep_counts["squat"]
-    pushup_reps = rep_counts["push_up"]
+        avg_elbow = (
+            (features.get("left_elbow") or 0.0) +
+            (features.get("right_elbow") or 0.0)
+        ) / 2
 
-    if squat_reps == 0 and pushup_reps == 0:
-        display_exercise = label   # nothing counted yet, show live label
-        display_reps     = 0
-    elif squat_reps >= pushup_reps:
+        trunk = features.get("trunk") or 0.0
+
+    if quality and "Squat" in quality:
         display_exercise = "squat"
-        display_reps     = squat_reps
-    else:
-        display_exercise = "push_up"
-        display_reps     = pushup_reps
+        display_reps = rep_counts.get("squat", 0)
 
-    # ── overlay ──────────────────────────────────────────────────
+    elif quality and "Push-up" in quality:
+        display_exercise = "push_up"
+        display_reps = rep_counts.get("push_up", 0)
+
+    else:
+        display_exercise = label or "idle"
+        display_reps = 0
+
+    if session is not None:
+        session["exercise"] = display_exercise
+        session["total_reps"] = display_reps
+        session["last_display_reps"] = display_reps
+
+        session["squat_reps"] = rep_counts.get("squat", 0)
+        session["pushup_reps"] = rep_counts.get("push_up", 0)
+
+        if features is not None:
+            session["avg_knees"].append(avg_knee)
+            session["avg_elbows"].append(avg_elbow)
+            session["avg_trunks"].append(trunk)
+
+        if quality not in ["Collecting...", "Analyzing...", None]:
+            session["qualities"].append(quality)
+
+        score = last_score.get("score", 100)
+        session["scores"].append(score)
+
+        for feedback in last_score.get("feedback", []):
+            session["feedback_set"].add(feedback)
+
+        for risk in last_score.get("risks", []):
+            session["risks"].add(risk)
+
+        for risk in risk_flags:
+            session["risks"].add(risk)
+
     cv2.putText(
-        frame, f"Exercise: {display_exercise}",
-        (30, 40), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA,
+        frame,
+        f"Exercise: {display_exercise}",
+        (30, 40),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        1,
+        (0, 255, 0),
+        2,
+        cv2.LINE_AA,
     )
+
     cv2.putText(
-        frame, f"Reps: {display_reps}",
-        (30, 80), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 0), 2, cv2.LINE_AA,
-    )
-    cv2.putText(
-        frame, f"Knee: {avg_knee:.1f}",
-        (30, 120), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2, cv2.LINE_AA,
-    )
-    cv2.putText(
-        frame, f"Elbow: {avg_elbow:.1f}",
-        (30, 155), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2, cv2.LINE_AA,
-    )
-    cv2.putText(
-        frame, f"Trunk: {trunk:.1f}",
-        (30, 190), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2, cv2.LINE_AA,
+        frame,
+        f"Reps: {display_reps}",
+        (30, 80),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.8,
+        (255, 255, 0),
+        2,
+        cv2.LINE_AA,
     )
 
     return frame, label
+
+
+def finalize_session(session):
+    def avg(values):
+        return round(sum(values) / len(values), 1) if values else 0.0
+
+    session["knee_angle"] = avg(session["avg_knees"])
+    session["elbow_angle"] = avg(session["avg_elbows"])
+    session["trunk_angle"] = avg(session["avg_trunks"])
+
+    # Final quality from LSTM majority vote
+    if session["qualities"]:
+        session["quality_label"] = Counter(session["qualities"]).most_common(1)[0][0]
+    else:
+        session["quality_label"] = "Unknown"
+
+    quality_label = session["quality_label"]
+
+    # Final exercise from LSTM quality label
+    if "Squat" in quality_label:
+        session["exercise"] = "squat"
+    elif "Push-up" in quality_label:
+        session["exercise"] = "push_up"
+    else:
+        session["exercise"] = "unknown"
+
+    # Final reps should be the highest rep count seen in the video
+    # session["total_reps"] = session.get("max_reps", 0)
+    session["total_reps"] = session.get("last_display_reps", 0)
+
+    session["feedback"] = list(session["feedback_set"])
+    session["risks"] = list(session["risks"])

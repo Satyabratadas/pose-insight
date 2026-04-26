@@ -79,11 +79,12 @@ class ExerciseClassifier:
 
         if len(self.history) < self.MIN_FRAMES_TO_CLASSIFY:
             self._append_and_smooth("idle")
-            return self.last_stable_label, self._rep_counts()
+            return self.last_stable_label, self._rep_counts(), self.last_score
 
+        
         raw = self._classify()
-        self._update_counter(raw)    # repetition count
         self._append_and_smooth(raw)
+        self._update_counter(self.last_stable_label)
         return self.last_stable_label, self._rep_counts(), self.last_score
 
     def reset_reps(self) -> None:
@@ -137,45 +138,43 @@ class ExerciseClassifier:
     def _classify(self) -> str:
         sig = self._motion_signature()
 
-        # 1. Idle — nothing meaningful moving
         if sig["total_motion"] < self.IDLE_MOTION_THRESHOLD:
             return "idle"
 
-        # ── Posture gate ─────────────────────────────────────────────────────
-        # Lock out the wrong exercise class based on how the body is oriented.
-        #   • Standing upright  → push_up is impossible, skip that branch entirely
-        #   • Lying horizontal  → squat   is impossible, skip that branch entirely
-        # This prevents a squat from ever being mislabelled as push_up and vice-versa.
-        zone = self._posture_zone(sig["avg_trunk"])
+        squat_score = 0
+        pushup_score = 0
 
-        # 2. Squat
-        #    • Knees and hips dominate  (lower >> upper)
-        #    • Elbows quiet
-        #    • Trunk upright
-        #    • Posture gate: skipped when person is clearly horizontal
-        if zone != "horizontal" and (
-            sig["knee_motion"]  > self.SQUAT_KNEE_MOTION
-            and sig["hip_motion"]   > self.SQUAT_HIP_MOTION
-            and sig["elbow_motion"] < self.SQUAT_ELBOW_MAX
-            and sig["avg_trunk"]    < self.SQUAT_TRUNK_MAX
-            and sig["lower_body"]   > sig["upper_body"] + self.SQUAT_LOWER_UPPER_LEAD
-        ):
-            return "squat"
+        # Push-up evidence
+        if sig["elbow_motion"] > 15:
+            pushup_score += 3
+        if sig["elbow_motion"] > sig["knee_motion"]:
+            pushup_score += 2
+        if sig["elbow_motion"] > sig["hip_motion"]:
+            pushup_score += 2
+        if sig["trunk_motion"] < 35:
+            pushup_score += 1
+        if sig["upper_body"] >= sig["lower_body"] * 0.5:
+            pushup_score += 1
 
-        # 3. Push-up
-        #    • Elbows dominate (upper >> lower)
-        #    • Legs / trunk quiet
-        #    • Trunk horizontal (large angle from vertical)
-        #    • Posture gate: skipped when person is clearly standing
-        if zone != "standing" and (
-            sig["elbow_motion"] > self.PUSHUP_ELBOW_MOTION
-            and sig["lower_body"]   < self.PUSHUP_LOWER_MAX
-            and sig["trunk_motion"] < self.PUSHUP_TRUNK_MAX
-            and sig["upper_body"]   > sig["lower_body"] + self.PUSHUP_UPPER_LOWER_LEAD
-        ):
+        # Squat evidence
+        if sig["knee_motion"] > 18:
+            squat_score += 2
+        if sig["hip_motion"] > 12:
+            squat_score += 2
+        if sig["lower_body"] > sig["upper_body"] + 12:
+            squat_score += 3
+        if sig["avg_trunk"] < 50:
+            squat_score += 1
+        if sig["elbow_motion"] < 25:
+            squat_score += 2
+
+        if pushup_score >= 5 and pushup_score > squat_score:
             return "push_up"
 
-        return "idle"   # ambiguous → treat as idle, NOT "unknown"
+        if squat_score >= 5 and squat_score > pushup_score:
+            return "squat"
+
+        return self.last_stable_label if self.last_stable_label in ["squat", "push_up"] else "idle"
 
     # ── Motion features ───────────────────────────────────────────────────────
 
