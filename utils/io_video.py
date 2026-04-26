@@ -132,6 +132,16 @@ def analyze_frame(frame, pose, feature_extractor, classifier, quality_predictor)
     ## Quality prediction
     quality = quality_predictor.update(features)
 
+    quality_exercise = None
+    display_exercise = label
+
+    if "Squat" in quality:
+        quality_exercise = "squat"
+        display_exercise = "squat"
+    elif "Push-up" in quality:
+        quality_exercise = "push_up"
+        display_exercise = "push_up"
+
     frame = draw_pose(frame, results)
 
     avg_knee  = 0.0
@@ -148,16 +158,15 @@ def analyze_frame(frame, pose, feature_extractor, classifier, quality_predictor)
     pushup_reps = rep_counts["push_up"]
 
 
-    ### Rep display logic
-    if squat_reps == 0 and pushup_reps == 0:
-        display_exercise = label   # nothing counted yet, show live label
-        display_reps     = 0
-    elif squat_reps >= pushup_reps:
+    if "Squat" in quality:
         display_exercise = "squat"
-        display_reps     = squat_reps
-    else:
+        display_reps = squat_reps
+    elif "Push-up" in quality:
         display_exercise = "push_up"
-        display_reps     = pushup_reps
+        display_reps = pushup_reps
+    else:
+        display_exercise = label
+        display_reps = 0
 
 
     ## Quality label color fix
@@ -218,14 +227,8 @@ def analyze_frame(frame, pose, feature_extractor, classifier, quality_predictor)
         (30, 230), cv2.FONT_HERSHEY_SIMPLEX, 0.8, quality_color, 2, cv2.LINE_AA,
     )
 
-    ### Score + Feedback
-    score = last_score.get("score", 100)
     feedback = last_score.get("feedback", [])
 
-    cv2.putText(
-        frame, f"Score: {score}",
-        (30, 270), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 255), 2, cv2.LINE_AA,
-    )
     if feedback:
         cv2.putText(
             frame, feedback[0],
