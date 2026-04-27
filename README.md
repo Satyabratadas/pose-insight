@@ -10,7 +10,15 @@ PoseInsight supports:
 - 📷 Live Webcam Analysis  
 - 🧠 ML / DL-based Quality Prediction  
 - ⚠️ Injury Risk Detection  
-- 💬 Gemini AI Coaching Feedback  
+- 💬 Gemini AI Coaching Feedback
+
+## 🎥 Demo Video
+
+Watch the full live demo here:  
+[PoseInsight Live Demo on YouTube](https://youtu.be/U1MOYg6Z4TA?si=G4oPQe-vSMmITzt8)
+
+[![Watch the demo](https://img.youtube.com/vi/U1MOYg6Z4TA/0.jpg)](https://youtu.be/U1MOYg6Z4TA?si=G4oPQe-vSMmITzt8)
+
 
 ---
 
