@@ -94,7 +94,9 @@ elif option == "Live Camera":
         step=5
     )
 
-    frame_placeholder = st.empty()
+    # frame_placeholder = st.empty()
+    with st.container():
+        frame_placeholder = st.empty()
 
     if st.button("Start Live Analysis"):
         with st.spinner(f"Analyzing live movement for {duration} seconds..."):
