@@ -9,6 +9,7 @@ from core.feature_extractor import FeatureExtractor
 from core.classifier import ExerciseClassifier
 from core.quality_predictor import QualityPredictor
 from utils.draw import draw_pose
+import threading
 
 
 def create_empty_session():
@@ -114,6 +115,55 @@ def process_video(input_path, output_path):
 
     return True, session
 
+# def run_webcam(frame_placeholder, duration_seconds=10):
+#     pose = PoseEstimator()
+#     feature_extractor = FeatureExtractor()
+#     classifier = ExerciseClassifier()
+#     quality_predictor = QualityPredictor()
+
+#     session = create_empty_session()
+
+#     cap = cv2.VideoCapture(0)
+#     cap = cv2.VideoCapture(0)
+#     cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
+#     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+#     cap.set(cv2.CAP_PROP_ZOOM, 0)
+
+#     if not cap.isOpened():
+#         print("Error: Could not open webcam")
+#         return None
+
+#     start_time = time.time()
+
+#     while cap.isOpened():
+#         ret, frame = cap.read()
+#         if not ret:
+#             break
+
+#         frame, _ = analyze_frame(
+#             frame,
+#             pose,
+#             feature_extractor,
+#             classifier,
+#             quality_predictor,
+#             session=session,
+#         )
+
+#         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+#         frame_rgb = cv2.resize(frame_rgb, (960, 540))
+#         frame_placeholder.image(frame_rgb, channels="RGB", width=960)
+
+#         # Stop automatically after selected duration
+#         elapsed_time = time.time() - start_time
+#         if elapsed_time >= duration_seconds:
+#             break
+
+#     cap.release()
+
+#     finalize_session(session)
+
+#     return session
+
 def run_webcam(frame_placeholder, duration_seconds=10):
     pose = PoseEstimator()
     feature_extractor = FeatureExtractor()
@@ -123,6 +173,9 @@ def run_webcam(frame_placeholder, duration_seconds=10):
     session = create_empty_session()
 
     cap = cv2.VideoCapture(0)
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+    cap.set(cv2.CAP_PROP_ZOOM, 0)
 
     if not cap.isOpened():
         print("Error: Could not open webcam")
@@ -145,17 +198,16 @@ def run_webcam(frame_placeholder, duration_seconds=10):
         )
 
         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        frame_placeholder.image(frame_rgb, channels="RGB", width=640)
+        # Lock frame size — prevents zoom
+        frame_rgb = cv2.resize(frame_rgb, (960, 540))
+        frame_placeholder.image(frame_rgb, channels="RGB", width=960)
 
-        # Stop automatically after selected duration
         elapsed_time = time.time() - start_time
         if elapsed_time >= duration_seconds:
             break
 
     cap.release()
-
     finalize_session(session)
-
     return session
 
 
