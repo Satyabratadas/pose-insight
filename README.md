@@ -4,6 +4,8 @@
 
 The system bridges the gap between raw pose estimation and actionable coaching by transforming human movement into biomechanical insights, exercise classification, repetition counting, movement-quality prediction, injury-risk detection, and Gemini-powered personalized coaching.
 
+PoseInsight deploys an LSTM-based temporal movement quality predictor that analyzes biomechanical feature sequences across time to classify exercise quality beyond frame-level estimation.
+
 PoseInsight supports:
 
 - 🎥 Uploaded Video Analysis  
@@ -63,7 +65,7 @@ PoseInsight/
 │   ├── feature_extractor.py     # Joint angles + biomechanical features
 │   ├── classifier.py            # Rule-based exercise classification
 │   ├── rep_segmenter.py         # Repetition counting
-│   ├── quality_predictor.py     # RF / LSTM quality predictor
+│   ├── quality_predictor.py     # LSTM-based temporal quality predictor
 │   ├── risk_detection.py        # Injury risk analysis
 │   └── feedback_generator.py    # Gemini coaching + risk summary
 │
@@ -73,9 +75,9 @@ PoseInsight/
 │   └── dataset_writer.py        # Dataset export utilities
 │
 ├── models/
-│   ├── random_forest_quality.pkl
-│   ├── mlp_quality.pt
-│   ├── lstm_quality.pt
+│   ├── lstm_quality.pt          # Primary deployed model
+│   ├── random_forest_quality.pkl # Baseline benchmark
+│   ├── mlp_quality.pt           # Experimental benchmark
 │   └── model_metadata.json
 │
 ├── data/                        # Good / bad squat + push-up datasets
@@ -98,7 +100,7 @@ Rule-Based Exercise Classification
         ↓
 Rep Counting + Movement Segmentation
         ↓
-RF / MLP / LSTM Quality Prediction
+LSTM-Based Temporal Quality Prediction
         ↓
 Risk Detection
         ↓
@@ -137,16 +139,19 @@ Tracks:
 
 ### 🧠 Quality Prediction
 
-Trained and compared:
-- Random Forest
-- MLP
-- LSTM
+Trained and evaluated:
+- Random Forest (baseline)
+- MLP (feedforward benchmark)
+- LSTM (final deployed temporal model)
 
 Predicted classes:
 - Good Squat
 - Bad Squat
 - Good Push-up
 - Bad Push-up
+
+### Temporal Modeling Advantage:
+Unlike frame-wise models, LSTM analyzes sequential biomechanical progression over time, enabling more context-aware assessment of movement quality and form consistency.
   
 ### ⚠️ Injury Risk Detection
 
@@ -173,7 +178,9 @@ Transforms model outputs into:
   
 ### Current Deployment:
 
-***Random Forest / LSTM hybrid depending stability and demo mode***
+***LSTM is the primary deployed model for real-time and uploaded-video quality prediction due to its ability to capture temporal biomechanical movement patterns across frame sequences.***
+
+***Random Forest and MLP were benchmarked for comparison, but LSTM best aligns with sequence-aware movement analysis objectives.***
 
 ### Saved Assets:
 - Dataset distribution
@@ -237,7 +244,7 @@ Future improvements include:
 - Limited labeled dataset
 - Frame-level pose noise
 - Rule-based baseline limitations
-- Small-data deep learning instability
+- Limited labeled sequence data can impact LSTM temporal generalization
 - Webcam variability
 
 ## Future Work
@@ -245,7 +252,7 @@ Future improvements include:
 - Docker deployment
 - Expanded dataset
 - Multi-exercise support
-- Better temporal transformers
+- Expanded labeled dataset for stronger LSTM and Transformer-based temporal learning
 - Mobile deployment
 - Real-time corrective audio coaching
 
